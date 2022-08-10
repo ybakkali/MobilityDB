@@ -101,6 +101,16 @@ RETURNS tgeompoint
 AS 'MODULE_PATHNAME', 'Tpoint_squish_simplify'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE FUNCTION APED(tgeompoint, tgeompoint)
+RETURNS double precision
+AS 'MODULE_PATHNAME', 'APED'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ASED(tgeompoint, tgeompoint)
+RETURNS double precision
+AS 'MODULE_PATHNAME', 'ASED'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 CREATE TYPE geom_times AS (
   geom geometry,
   times bigint[]

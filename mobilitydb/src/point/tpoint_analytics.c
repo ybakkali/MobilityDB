@@ -157,6 +157,30 @@ Tpoint_squish_simplify(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(result);
 }
 
+PG_FUNCTION_INFO_V1(APED);
+PGDLLEXPORT Datum
+APED(PG_FUNCTION_ARGS)
+{
+  Temporal *temp = PG_GETARG_TEMPORAL_P(0);
+  Temporal *temp2 = PG_GETARG_TEMPORAL_P(1);
+  double result = aped(temp, temp2);
+  PG_FREE_IF_COPY(temp, 0);
+  PG_FREE_IF_COPY(temp2, 0);
+  PG_RETURN_FLOAT8(result);
+}
+
+PG_FUNCTION_INFO_V1(ASED);
+PGDLLEXPORT Datum
+ASED(PG_FUNCTION_ARGS)
+{
+  Temporal *temp = PG_GETARG_TEMPORAL_P(0);
+  Temporal *temp2 = PG_GETARG_TEMPORAL_P(1);
+  double result = ased(temp, temp2);
+  PG_FREE_IF_COPY(temp, 0);
+  PG_FREE_IF_COPY(temp2, 0);
+  PG_RETURN_FLOAT8(result);
+}
+
 /*****************************************************************************
  * Mapbox Vector Tile functions for temporal points.
  *****************************************************************************/

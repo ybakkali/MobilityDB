@@ -1349,12 +1349,14 @@ void adjust_priority(tinstant_node *p, priority_queue *pq, bool linear) {
 		Datum value;
 		POINT2D p2k, p2_sync;
 		double d_tmp;
-				
-		
+
+
 		const TInstant *start = p->predecessor->TInstant_point;
 		const TInstant *end = p->successor->TInstant_point;
 		
 		value = tsegment_value_at_timestamp(start, end, linear, p->TInstant_point->t);
+
+        p2k = datum_point2d(tinstant_value(p->TInstant_point));
         p2_sync = datum_point2d(value);
         d_tmp = dist2d_pt_pt(&p2k, &p2_sync);
         pfree(DatumGetPointer(value));
@@ -1413,6 +1415,10 @@ Temporal *Tpoint_squish(const Temporal *temp, double lambda, double mu)
 
     for (unsigned int i = 0; i < size; ++i) {
         if (i / lambda >= beta) beta ++;
+
+        if (pq->length == beta) {
+            reduce(pq, linear);
+        }
 		
 		const TInstant *point = tsequence_inst_n(seq, i);
 		
@@ -1431,10 +1437,6 @@ Temporal *Tpoint_squish(const Temporal *temp, double lambda, double mu)
             sq_points[i - 1].successor = &sq_points[i];
             sq_points[i].predecessor = &sq_points[i - 1];
             adjust_priority(&sq_points[i - 1], pq, linear);
-        }
-
-        if (pq->length == beta) {
-            reduce(pq, linear);
         }
     }
 
@@ -1464,6 +1466,84 @@ Temporal *Tpoint_squish(const Temporal *temp, double lambda, double mu)
 	pfree(instants);
 	
     return (Temporal *) result;
+}
+/*****************************************************************************
+ * Metrics
+ *****************************************************************************/
+
+
+double aped(const Temporal *temp, const Temporal *temp2) {
+      double res = 0;
+      unsigned int k = 0;
+
+      const TSequence *seq = (TSequence *) temp;
+      unsigned int size = seq->count;
+
+      const TSequence *seq2 = (TSequence *) temp2;
+      unsigned int size2 = seq2->count;
+
+      for (unsigned int i = 0; i < size; ++i) {
+          const TInstant *point = tsequence_inst_n(seq, i);
+          for (unsigned int j = k; j < size2; ++j) {
+              const TInstant *point2 = tsequence_inst_n(seq2, j);
+              const TInstant *point3 = tsequence_inst_n(seq2, j+1);
+              if (point == point2 || point == point3) {
+                  k = j;
+                  break;
+              } else if (point2->t <= point->t && point->t <= point3->t){
+
+
+                  POINT2D p2k, p2a, p2b;
+                  p2k = datum_point2d(tinstant_value(point));
+                  p2a = datum_point2d(tinstant_value(point2));
+                  p2b = datum_point2d(tinstant_value(point3));
+
+                  res += dist2d_pt_seg(&p2k, &p2a, &p2b);
+                  k = j;
+                  break;
+              }
+          }
+      }
+
+      return res / size;
+}
+
+double ased(const Temporal *temp, const Temporal *temp2) {
+    double res = 0;
+    unsigned int k = 0;
+
+    const TSequence *seq = (TSequence *) temp;
+    unsigned int size = seq->count;
+    bool linear = MOBDB_FLAGS_GET_LINEAR(seq->flags);
+
+    const TSequence *seq2 = (TSequence *) temp2;
+    unsigned int size2 = seq2->count;
+
+    for (unsigned int i = 0; i < size; ++i) {
+        const TInstant *point = tsequence_inst_n(seq, i);
+        for (unsigned int j = k; j < size2; ++j) {
+            const TInstant *point2 = tsequence_inst_n(seq2, j);
+            const TInstant *point3 = tsequence_inst_n(seq2, j+1);
+            if (point == point2 || point == point3) {
+                k = j;
+                break;
+            } else if (point2->t <= point->t && point->t <= point3->t){
+
+                Datum value = tsegment_value_at_timestamp(point2, point3, linear, point->t);
+
+                POINT2D p2k, p2_sync;
+                p2k = datum_point2d(tinstant_value(point));
+                p2_sync = datum_point2d(value);
+                pfree(DatumGetPointer(value));
+
+                res += dist2d_pt_pt(&p2k, &p2_sync);
+                k = j;
+                break;
+            }
+        }
+    }
+
+    return res / size;
 }
 
 /*****************************************************************************
