@@ -1169,7 +1169,6 @@ typedef struct PriorityQueue {
 } priority_queue;
 
 /**
- *
  * Initialisation of a the priority queue.
  *
  * @param size the size to initialize the priority queue with.
@@ -1186,7 +1185,6 @@ priority_queue *init(int size) {
 }
 
 /**
- *
  * Swap two element between them.
  *
  * @param pq a pointer to the priority queue.
@@ -1204,7 +1202,6 @@ void swap(priority_queue *pq, int index, int index2) {
 }
 
 /**
- *
  * Return the priority of the element with the smallest priority in the priority queue.
  *
  * @param pq a pointer to the priority queue.
@@ -1220,7 +1217,6 @@ double min(priority_queue *pq) {
 }
 
 /**
- *
  *  Restore the heap property by comparing and possibly swapping a node with its parent.
  *
  * @param pq a pointer to the priority queue.
@@ -1237,7 +1233,6 @@ void heapify_up(priority_queue *pq, int index) {
 }
 
 /**
- *
  * Insertion of an element in the priority queue.
  *
  * @param pq a pointer to the priority queue.
@@ -1267,8 +1262,7 @@ void push(priority_queue *pq, tinstant_node *p) {
 }
 
 /**
- *
- *  Restore the heap property by comparing and possibly swapping a node with one of its children.
+ * Restore the heap property by comparing and possibly swapping a node with one of its children.
  *
  * @param pq a pointer to the priority queue.
  * @param index the index to start at when heapifying down.
@@ -1294,7 +1288,6 @@ void heapify_down(priority_queue *pq, int index) {
 }
 
 /**
- *
  * Deletion of the element with the smallest priority in the priority queue and return it.
  *
  * @param pq a pointer to the priority queue.
@@ -1319,7 +1312,6 @@ tinstant_node *pop(priority_queue *pq) {
 }
 
 /**
- *
  * Freeing the memory.
  *
  * @param pq a pointer to the priority queue.
@@ -1336,11 +1328,11 @@ void delete(priority_queue *pq) {
  *****************************************************************************/
 
 /**
- *
  * Adjust the priority of a point.
  *
  * @param p a point.
  * @param pq a pointer to the priority queue.
+ * @param linear flag
  */
 void adjust_priority(tinstant_node *p, priority_queue *pq, bool linear) {
     if (p->successor && p->predecessor) {
@@ -1375,10 +1367,10 @@ void adjust_priority(tinstant_node *p, priority_queue *pq, bool linear) {
 }
 
 /**
- *
  * Reduce the priority queue size by removing element under the SED bound.
  *
  * @param pq a pointer to the priority queue.
+ * @param linear flag
  */	
 void reduce(priority_queue *pq, bool linear) {
     tinstant_node *p = pop(pq);
@@ -1394,18 +1386,15 @@ void reduce(priority_queue *pq, bool linear) {
 }
 
 /**
+ * Simplify the temporal sequence point using SQUISH-E simplification algorithm.
  *
- * The simplification algorithm for a spatio-temporal trajectory.
- *
- * @param points trajectory to simplify.
- * @param size the size of the the trajectory.
+ * @param seq temporal point.
  * @param lambda lower bound of the compression ratio.
  * @param mu upper bound on the SED.
- * @return a simplified trajectory
+ * @return a simplified temporal point
  */
-Temporal *Tpoint_squish(const Temporal *temp, double lambda, double mu)
+TSequence *tsequence_squish_e(const TSequence *seq, double lambda, double mu)
 {
-	const TSequence *seq = (TSequence *) temp;
 	unsigned int size = seq->count;
 	bool linear = MOBDB_FLAGS_GET_LINEAR(seq->flags);
 	tinstant_node *sq_points = (tinstant_node*) palloc(sizeof(tinstant_node) * size);
@@ -1422,16 +1411,11 @@ Temporal *Tpoint_squish(const Temporal *temp, double lambda, double mu)
 		
 		const TInstant *point = tsequence_inst_n(seq, i);
 		
-		tinstant_node sq_point = { .TInstant_point = point,
-						 .predecessor = NULL,
-						 .successor = NULL,
-						 .pi = 0,
-						 .priority = INFINITY};
+		tinstant_node sq_point = { .TInstant_point = point, .predecessor = NULL, .successor = NULL, .pi = 0,
+                                   .priority = INFINITY};
 						 
 		sq_points[i] = sq_point;								 
 		push(pq, &sq_points[i]);
-		
-
 
         if (i >= 1) {
             sq_points[i - 1].successor = &sq_points[i];
@@ -1465,13 +1449,60 @@ Temporal *Tpoint_squish(const Temporal *temp, double lambda, double mu)
 	pfree(sq_points);
 	pfree(instants);
 	
-    return (Temporal *) result;
+    return result;
+}
+
+/**
+ * Simplify the temporal sequence set point using SQUISH-E simplification algorithm.
+ *
+ * @param ss temporal point
+ * @param lambda lower bound of the compression ratio.
+ * @param mu upper bound on the SED.
+ */
+TSequenceSet *tsequenceset_squish_e(const TSequenceSet *ss, double lambda, double mu)
+{
+  TSequence **sequences = palloc(sizeof(TSequence *) * ss->count);
+  for (int i = 0; i < ss->count; i++)
+  {
+      const TSequence *seq = tsequenceset_seq_n(ss, i);
+      sequences[i] = tsequence_squish_e(seq, lambda, mu);
+  }
+  return tsequenceset_make_free(sequences, ss->count, NORMALIZE);
+}
+
+/**
+ * Simplify the temporal point using SQUISH-E simplification algorithm.
+ *
+ * @param temp temporal point.
+ * @param lambda lower bound of the compression ratio.
+ * @param mu upper bound on the SED.
+ * @sqlfunc simplify()
+ * @return a simplified temporal point
+ */
+Temporal *temporal_squish_simplify(const Temporal *temp, double lambda, double mu)
+{
+    Temporal *result;
+    ensure_valid_tempsubtype(temp->subtype);
+    if (temp->subtype == TINSTANT || temp->subtype == TINSTANTSET ||
+      !MOBDB_FLAGS_GET_LINEAR(temp->flags))
+      result = temporal_copy(temp);
+    else if (temp->subtype == TSEQUENCE)
+      result = (Temporal *) tsequence_squish_e((TSequence *) temp, lambda, mu);
+    else /* temp->subtype == TSEQUENCESET */
+      result = (Temporal *) tsequenceset_squish_e((TSequenceSet *) temp, lambda, mu);
+    return result;
 }
 /*****************************************************************************
  * Metrics
  *****************************************************************************/
 
-
+/**
+ * Average Perpendicular Euclidean Distance metric.
+ *
+ * @param temp Temporal point
+ * @param temp2 Temporal point
+ * @return average PED error
+ */
 double aped(const Temporal *temp, const Temporal *temp2) {
       double res = 0;
       unsigned int k = 0;
@@ -1492,7 +1523,6 @@ double aped(const Temporal *temp, const Temporal *temp2) {
                   break;
               } else if (point2->t <= point->t && point->t <= point3->t){
 
-
                   POINT2D p2k, p2a, p2b;
                   p2k = datum_point2d(tinstant_value(point));
                   p2a = datum_point2d(tinstant_value(point2));
@@ -1508,6 +1538,13 @@ double aped(const Temporal *temp, const Temporal *temp2) {
       return res / size;
 }
 
+/**
+ * Average Synchronous Euclidean Distance metric.
+ *
+ * @param temp Temporal point
+ * @param temp2 Temporal point
+ * @return average SED error
+ */
 double ased(const Temporal *temp, const Temporal *temp2) {
     double res = 0;
     unsigned int k = 0;
@@ -1530,8 +1567,8 @@ double ased(const Temporal *temp, const Temporal *temp2) {
             } else if (point2->t <= point->t && point->t <= point3->t){
 
                 Datum value = tsegment_value_at_timestamp(point2, point3, linear, point->t);
-
                 POINT2D p2k, p2_sync;
+
                 p2k = datum_point2d(tinstant_value(point));
                 p2_sync = datum_point2d(value);
                 pfree(DatumGetPointer(value));

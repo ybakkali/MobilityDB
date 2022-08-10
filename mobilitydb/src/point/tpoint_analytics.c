@@ -152,7 +152,7 @@ Tpoint_squish_simplify(PG_FUNCTION_ARGS)
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   double lambda = PG_GETARG_FLOAT8(1);
   double mu = PG_GETARG_FLOAT8(2);
-  Temporal *result = Tpoint_squish(temp, lambda, mu);
+  Temporal *result = temporal_squish_simplify(temp, lambda, mu);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(result);
 }

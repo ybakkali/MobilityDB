@@ -89,6 +89,9 @@ SELECT MAX(numInstants(simplify(temp, 4))) FROM tbl_tfloat;
 SELECT MAX(numInstants(simplify(temp, false, 4))) FROM tbl_tgeompoint;
 SELECT MAX(numInstants(simplify(temp, true, 4))) FROM tbl_tgeompoint;
 
+SELECT MAX(numInstants(simplify(temp, 1, 4))) FROM tbl_tgeompoint;
+SELECT MAX(numInstants(simplify(temp, 2, 0))) FROM tbl_tgeompoint;
+
 -------------------------------------------------------------------------------
 
 SELECT round(MAX(ST_Length((mvt).geom))::numeric, 6), MAX(array_length((mvt).times, 1))

@@ -478,6 +478,18 @@ SELECT MAX(numInstants(simplify(temp, true, 4))) FROM tbl_tgeompoint;
   56
 (1 row)
 
+SELECT MAX(numInstants(simplify(temp, 1, 4))) FROM tbl_tgeompoint;
+ max 
+-----
+  56
+(1 row)
+
+SELECT MAX(numInstants(simplify(temp, 2, 0))) FROM tbl_tgeompoint;
+ max 
+-----
+  34
+(1 row)
+
 SELECT round(MAX(ST_Length((mvt).geom))::numeric, 6), MAX(array_length((mvt).times, 1))
 FROM (SELECT asMVTGeom(temp, stbox 'STBOX((0,0),(50,50))') AS mvt
   FROM tbl_tgeompoint ) AS t;
