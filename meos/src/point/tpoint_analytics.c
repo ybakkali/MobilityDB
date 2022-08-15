@@ -1149,18 +1149,16 @@ temporal_simplify(const Temporal *temp, bool synchronized, double eps_dist)
  * Priority Queue.
  *****************************************************************************/
 
-typedef struct TInstant_Node tinstant_node;
-
-struct TInstant_Node {
+typedef struct TInstant_Node {
 	
 	const TInstant *TInstant_point;
 
-    tinstant_node *successor;
-    tinstant_node *predecessor;
+    int successor;
+    int predecessor;
     double pi;
     double priority;
     int index;
-};
+} tinstant_node;
 
 typedef struct PriorityQueue {
     tinstant_node **heap;
@@ -1334,17 +1332,20 @@ void delete(priority_queue *pq) {
  * @param pq a pointer to the priority queue.
  * @param linear flag
  */
-void adjust_priority(tinstant_node *p, priority_queue *pq, bool linear) {
-    if (p->successor && p->predecessor) {
+void adjust_priority(int index, priority_queue *pq, tinstant_node *sq_points, bool linear) {
+    tinstant_node *p = &sq_points[index];
+    if (p->successor != -1 && p->predecessor != -1) {
 		
 		
 		Datum value;
 		POINT2D p2k, p2_sync;
 		double d_tmp;
 
+        tinstant_node *pred = &sq_points[p->predecessor];
+        tinstant_node *succ = &sq_points[p->successor];
 
-		const TInstant *start = p->predecessor->TInstant_point;
-		const TInstant *end = p->successor->TInstant_point;
+		const TInstant *start = pred->TInstant_point;
+		const TInstant *end = succ->TInstant_point;
 		
 		value = tsegment_value_at_timestamp(start, end, linear, p->TInstant_point->t);
 
@@ -1372,17 +1373,20 @@ void adjust_priority(tinstant_node *p, priority_queue *pq, bool linear) {
  * @param pq a pointer to the priority queue.
  * @param linear flag
  */	
-void reduce(priority_queue *pq, bool linear) {
+void reduce(priority_queue *pq, tinstant_node *sq_points, bool linear) {
     tinstant_node *p = pop(pq);
 
-    p->predecessor->successor = p->successor;
-    p->successor->predecessor = p->predecessor;
+    tinstant_node *pred = &sq_points[p->predecessor];
+    pred->successor = p->successor;
 
-    p->successor->pi = fmax(p->priority, p->successor->pi);
-    p->predecessor->pi = fmax(p->priority, p->predecessor->pi);
+    tinstant_node *succ = &sq_points[p->successor];
+    succ->predecessor = p->predecessor;
 
-    adjust_priority(p->predecessor, pq, linear);
-    adjust_priority(p->successor, pq, linear);
+    succ->pi = fmax(p->priority, succ->pi);
+    pred->pi = fmax(p->priority, pred->pi);
+
+    adjust_priority(p->predecessor, pq, sq_points, linear);
+    adjust_priority(p->successor, pq, sq_points, linear);
 }
 
 /**
@@ -1406,26 +1410,26 @@ TSequence *tsequence_squish_e(const TSequence *seq, double lambda, double mu)
         if (i / lambda >= beta) beta ++;
 
         if (pq->length == beta) {
-            reduce(pq, linear);
+            reduce(pq, sq_points, linear);
         }
 		
 		const TInstant *point = tsequence_inst_n(seq, i);
 		
-		tinstant_node sq_point = { .TInstant_point = point, .predecessor = NULL, .successor = NULL, .pi = 0,
+		tinstant_node sq_point = { .TInstant_point = point, .predecessor = -1, .successor = -1, .pi = 0,
                                    .priority = INFINITY};
 						 
 		sq_points[i] = sq_point;								 
 		push(pq, &sq_points[i]);
 
         if (i >= 1) {
-            sq_points[i - 1].successor = &sq_points[i];
-            sq_points[i].predecessor = &sq_points[i - 1];
-            adjust_priority(&sq_points[i - 1], pq, linear);
+            sq_points[i - 1].successor = i;
+            sq_points[i].predecessor = i - 1;
+            adjust_priority(i - 1, pq, sq_points, linear);
         }
     }
 
     while (min(pq) <= mu) {
-        reduce(pq, linear);
+        reduce(pq, sq_points, linear);
     }
 	
 	const TInstant **instants = palloc(sizeof(TInstant *) * pq->length);
