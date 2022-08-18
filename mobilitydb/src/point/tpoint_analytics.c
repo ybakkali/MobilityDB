@@ -181,6 +181,30 @@ ASED(PG_FUNCTION_ARGS)
   PG_RETURN_FLOAT8(result);
 }
 
+PG_FUNCTION_INFO_V1(ASPEED);
+PGDLLEXPORT Datum
+ASPEED(PG_FUNCTION_ARGS)
+{
+    Temporal *temp = PG_GETARG_TEMPORAL_P(0);
+    Temporal *temp2 = PG_GETARG_TEMPORAL_P(1);
+    double result = aspeed(temp, temp2);
+    PG_FREE_IF_COPY(temp, 0);
+    PG_FREE_IF_COPY(temp2, 0);
+    PG_RETURN_FLOAT8(result);
+}
+
+PG_FUNCTION_INFO_V1(AHEADING);
+PGDLLEXPORT Datum
+AHEADING(PG_FUNCTION_ARGS)
+{
+    Temporal *temp = PG_GETARG_TEMPORAL_P(0);
+    Temporal *temp2 = PG_GETARG_TEMPORAL_P(1);
+    double result = aheading(temp, temp2);
+    PG_FREE_IF_COPY(temp, 0);
+    PG_FREE_IF_COPY(temp2, 0);
+    PG_RETURN_FLOAT8(result);
+}
+
 /*****************************************************************************
  * Mapbox Vector Tile functions for temporal points.
  *****************************************************************************/

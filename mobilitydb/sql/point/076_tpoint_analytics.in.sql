@@ -101,14 +101,24 @@ RETURNS tgeompoint
 AS 'MODULE_PATHNAME', 'Tpoint_squish_simplify'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE FUNCTION APED(tgeompoint, tgeompoint)
+CREATE FUNCTION avg_ped(tgeompoint, tgeompoint)
 RETURNS double precision
 AS 'MODULE_PATHNAME', 'APED'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE FUNCTION ASED(tgeompoint, tgeompoint)
+CREATE FUNCTION avg_sed(tgeompoint, tgeompoint)
 RETURNS double precision
 AS 'MODULE_PATHNAME', 'ASED'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION avg_speed(tgeompoint, tgeompoint)
+    RETURNS double precision
+AS 'MODULE_PATHNAME', 'ASPEED'
+    LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION avg_heading(tgeompoint, tgeompoint)
+RETURNS double precision
+AS 'MODULE_PATHNAME', 'AHEADING'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE TYPE geom_times AS (

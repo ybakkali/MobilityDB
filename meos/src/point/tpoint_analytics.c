@@ -1586,6 +1586,107 @@ double ased(const Temporal *temp, const Temporal *temp2) {
 
     return res / size;
 }
+  double aspeed(const Temporal *temp, const Temporal *temp2) {
+      double res = 0;
+      unsigned int k = 0;
+
+      const TSequence *seq = (TSequence *) temp;
+      unsigned int size = seq->count;
+      bool linear = MOBDB_FLAGS_GET_LINEAR(seq->flags);
+
+
+      const TSequence *seq2 = (TSequence *) temp2;
+      unsigned int size2 = seq2->count;
+
+      for (unsigned int i = 0; i < size - 1; ++i) {
+
+          POINT2D p_i[2];
+          for (unsigned int z = 0; z < 2; ++z) {
+              const TInstant *point = tsequence_inst_n(seq, i + z);
+              for (unsigned int j = k; j < size2 - 1; ++j) {
+                  const TInstant *point2 = tsequence_inst_n(seq2, j);
+                  const TInstant *point3 = tsequence_inst_n(seq2, j + 1);
+
+                  if (point == point2 || point == point3) {
+                      p_i[z] = datum_point2d(tinstant_value(point));
+                      k = j;
+                      break;
+                  } else if (point2->t <= point->t && point->t <= point3->t) {
+
+                      Datum value = tsegment_value_at_timestamp(point2, point3, linear, point->t);
+                      POINT2D p2_sync = datum_point2d(value);
+                      p_i[z] = p2_sync;
+                      pfree(DatumGetPointer(value));
+                      k = j;
+                      break;
+                  }
+              }
+          }
+
+          double d, d2, t;
+          POINT2D point_i, point_i_1;
+          point_i = datum_point2d(tinstant_value(tsequence_inst_n(seq, i)));
+          point_i_1 = datum_point2d(tinstant_value(tsequence_inst_n(seq, i + 1)));
+
+          t = tsequence_inst_n(seq, i + 1)->t - tsequence_inst_n(seq, i)->t;
+
+          d = dist2d_pt_pt(&point_i, &point_i_1);
+          d2 = dist2d_pt_pt(&p_i[0], &p_i[1]);
+          res += fabs(d2/t - d/t);
+      }
+
+      return res / size;
+  }
+
+double aheading(const Temporal *temp, const Temporal *temp2) {
+    double res = 0;
+    unsigned int k = 0;
+
+    const TSequence *seq = (TSequence *) temp;
+    unsigned int size = seq->count;
+    bool linear = MOBDB_FLAGS_GET_LINEAR(seq->flags);
+
+
+    const TSequence *seq2 = (TSequence *) temp2;
+    unsigned int size2 = seq2->count;
+
+    for (unsigned int i = 0; i < size - 1; ++i) {
+
+        POINT2D p_i[2];
+        for (unsigned int z = 0; z < 2; ++z) {
+            const TInstant *point = tsequence_inst_n(seq, i + z);
+            for (unsigned int j = k; j < size2 - 1; ++j) {
+                const TInstant *point2 = tsequence_inst_n(seq2, j);
+                const TInstant *point3 = tsequence_inst_n(seq2, j + 1);
+
+                if (point == point2 || point == point3) {
+                    p_i[z] = datum_point2d(tinstant_value(point));
+                    k = j;
+                    break;
+                } else if (point2->t <= point->t && point->t <= point3->t) {
+
+                    Datum value = tsegment_value_at_timestamp(point2, point3, linear, point->t);
+                    POINT2D p2_sync = datum_point2d(value);
+                    p_i[z] = p2_sync;
+                    pfree(DatumGetPointer(value));
+                    k = j;
+                    break;
+                }
+            }
+        }
+
+        double d, d2;
+        POINT2D point_i, point_i_1;
+        point_i = datum_point2d(tinstant_value(tsequence_inst_n(seq, i)));
+        point_i_1 = datum_point2d(tinstant_value(tsequence_inst_n(seq, i + 1)));
+
+        azimuth_pt_pt(&point_i, &point_i_1, &d);
+        azimuth_pt_pt(&p_i[0], &p_i[1], &d2);
+        res += fabs(d2 - d);
+    }
+
+    return res / size;
+}
 
 /*****************************************************************************
  * Mapbox Vector Tile functions for temporal points.

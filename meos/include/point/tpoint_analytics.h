@@ -61,6 +61,12 @@ extern double aped(const Temporal *temp, const Temporal *temp2);
 
 /* Average Synchronous Euclidean Distance metric*/
 extern double ased(const Temporal *temp, const Temporal *temp2);
+
+/* Average speed metric*/
+extern double aspeed(const Temporal *temp, const Temporal *temp2);
+
+/* Average heading metric*/
+extern double aheading(const Temporal *temp, const Temporal *temp2);
   
 /* Transform the temporal point to Mapbox Vector Tile format */
 
